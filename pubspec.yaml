@@ -1,4 +1,5 @@
 name: string_scanner
+version: 0.0.1
 description: A sample application
 dev_dependencies:
   unittest: any
