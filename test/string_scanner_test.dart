@@ -25,7 +25,7 @@ main() {
     });
   });
   
-  group('beginning_of_line', () {
+  group('isBeginningOfLine', () {
     StringScanner s;
     setUp(() {
       s = new StringScanner("test\nstring");
@@ -33,45 +33,45 @@ main() {
     
     test('', () {
       var s = new StringScanner("test\nstring");
-      expect(s.beginning_of_line(), isTrue);
+      expect(s.isBeginningOfLine, isTrue);
     });
     
     test('new line', () {
       var s = new StringScanner("test\nstring");
       s.position = 4;
-      expect(s.beginning_of_line(), isFalse);
+      expect(s.isBeginningOfLine, isFalse);
     });
     
     test('next line', () {
       var s = new StringScanner("test\nstring");
       s.position = 5;
-      expect(s.beginning_of_line(), isTrue);
+      expect(s.isBeginningOfLine, isTrue);
     });
     
     test('last', () {
       var s = new StringScanner("test\nstring");
       s.position = 10;
-      expect(s.beginning_of_line(), isFalse);
+      expect(s.isBeginningOfLine, isFalse);
     });
     
     test('last new line', () {
       var s = new StringScanner("test\nstring\n");
       s.position = 12;
-      expect(s.beginning_of_line(), isTrue);
+      expect(s.isBeginningOfLine, isTrue);
     });
   });
   
-  group("end of string", () {
+  group("isEndOfString", () {
     StringScanner s;
     setUp(() => s = new StringScanner("test\nstring"));
     
     test("", () {
       s.position = 0;
-      expect(s.end_of_string(), isFalse);
+      expect(s.isEndOfString, isFalse);
       s.position = 10;
-      expect(s.end_of_string(), isFalse);
+      expect(s.isEndOfString, isFalse);
       s.position = 11;
-      expect(s.end_of_string(), isTrue);
+      expect(s.isEndOfString, isTrue);
     });
   });
   
@@ -82,6 +82,101 @@ main() {
     test("", () {
       s.concat(" string");
       expect(s.string, equals("test string"));
+    });
+  });
+  
+  group("unscan", () {
+    test("", () {
+      var s = new StringScanner("test string");
+      s.scan(new RegExp(r"\w+"));
+      s.unscan();
+      expect(s.scan(new RegExp(r".+")), equals("test string"));
+    });
+    
+    test("exception", () {
+      var s = new StringScanner("test string");
+      expect(() => s.unscan(), throwsA(new isInstanceOf<StringScannerError>()));
+    });
+  });
+  
+  group("scan", () {
+    StringScanner s;
+    setUp(() => s = new StringScanner("test string"));
+    
+    test("valid", () {
+      String text = s.scan(new RegExp(r"\w+"));
+      expect(text, equals("test"));
+      expect(s.position, 4);
+    });
+    
+    test("日本語", () {
+      var s = new StringScanner("あいう えお");
+      String text = s.scan(new RegExp(r"[^\s]+"));
+      expect(text, equals("あいう"));
+      expect(s.position, 3);
+    });
+    
+    test("seq", () {
+      StringScanner s = new StringScanner("test string");
+      expect(s.scan(new RegExp(r"\w+")), equals("test"));
+      expect(s.scan(new RegExp(r"\w+")), isNull);
+      expect(s.scan(new RegExp(r"\s+")), equals(" "));
+      expect(s.scan(new RegExp(r"\w+")), equals("string"));
+      expect(s.scan(new RegExp(r".")), isNull);
+    });
+  });
+  
+  group("scanUntil", () {
+    StringScanner s;
+    setUp(() => s = new StringScanner("test string"));
+    
+    test("valid", () {
+      String text = s.scanUntil(new RegExp(r"str"));
+      expect(text, equals("test str"));
+      expect(s.matched, equals("str"));
+      expect(s.position, equals(8));
+      expect(s.preMatch, equals("test "));
+      expect(s.postMatch, equals("ing"));
+    });
+  });
+  
+  group("skip", () {
+    StringScanner s;
+    setUp(() => s = new StringScanner("test string"));
+    
+    test("valid", () {
+      expect(s.skip(new RegExp(r"test")), equals(4));
+      expect(s.position, equals(4));
+    });
+    
+    test("seq", () {
+      expect(s.skip(new RegExp(r"\w+")), equals(4));
+      expect(s.skip(new RegExp(r"\w+")), isNull);
+      expect(s.skip(new RegExp(r"\s+")), equals(1));
+      expect(s.skip(new RegExp(r"\w+")), equals(6));
+      expect(s.skip(new RegExp(r".")), isNull);
+    });
+  });
+  
+  group("skipUntil", () {
+    StringScanner s;
+    setUp(() => s = new StringScanner("test string"));
+    
+    test("valid", () {
+      expect(s.skipUntil(new RegExp(r"str")), equals(8));
+      expect(s.matched, equals("str"));
+      expect(s.position, equals(8));
+      expect(s.preMatch, equals("test "));
+      expect(s.postMatch, equals("ing"));
+    });
+  });
+  
+  group("match", () {
+    test("valid", () {
+      var s = new StringScanner("test string");
+      expect(s.match(r"\w+"), equals(4));
+      expect(s.match(r"\w+"), equals(4));
+      expect(s.match(r"\s+"), isNull);
     });
   });
   
@@ -99,8 +194,8 @@ main() {
       String text = s.check(new RegExp(r"\s+"));
       expect(text, equals(" "));
       expect(s.matched, equals(" "));
-      expect(s.pre_match, equals("test"));
-      expect(s.post_match, equals("string"));
+      expect(s.preMatch, equals("test"));
+      expect(s.postMatch, equals("string"));
     });
     
     test("not valid", () {
@@ -110,25 +205,32 @@ main() {
     });
   });
   
-  group("check_until", () {
+  group("checkUntil", () {
     StringScanner s;
     setUp(() => s = new StringScanner("test string"));
     
     test("valid", () {
-      String text = s.check_until(new RegExp(r"str"));
+      String text = s.checkUntil(new RegExp(r"str"));
       expect(text, equals("test str"));
       expect(s.matched, equals("str"));
-      expect(s.pre_match, equals("test "));
-      expect(s.post_match, equals("ing"));
+      expect(s.preMatch, equals("test "));
+      expect(s.postMatch, equals("ing"));
     });
     
     test("change position", () {
       s.position = 4;
-      String text = s.check_until(new RegExp(r"t"));
+      String text = s.checkUntil(new RegExp(r"t"));
       expect(text, equals(" st"));
       expect(s.matched, equals("t"));
-      expect(s.pre_match, equals("test s"));
-      expect(s.post_match, equals("ring"));
+      expect(s.preMatch, equals("test s"));
+      expect(s.postMatch, equals("ring"));
+    });
+  });
+  
+  group("peek", () {
+    test("valid", () {
+      var s = new StringScanner("test string");
+      expect(s.peek(4), equals("test"));
     });
   });
   
@@ -146,31 +248,49 @@ main() {
     });
   });
   
-  group("pre_match", () {
+  group("preMatch", () {
     StringScanner s;
     setUp(() => s = new StringScanner("test string"));
     test("valid", () {
       s.check(new RegExp(r"\w+"));
-      expect(s.pre_match, equals(""));
+      expect(s.preMatch, equals(""));
     });
     
     test("not valid", () {
       s.check(new RegExp(r"\s+"));
-      expect(s.pre_match, isNull);
+      expect(s.preMatch, isNull);
     });
   });
   
-  group("post_match", () {
+  group("postMatch", () {
     StringScanner s;
     setUp(() => s = new StringScanner("test string"));
     test("valid", () {
       s.check(new RegExp(r"\w+"));
-      expect(s.post_match, equals(" string"));
+      expect(s.postMatch, equals(" string"));
     });
     
     test("not valid", () {
       s.check(new RegExp(r"\s+"));
-      expect(s.post_match, isNull);
+      expect(s.postMatch, isNull);
+    });
+  });
+  
+  group("operator []", () {
+    test("seq", () {
+      var s = new StringScanner("test string");
+      expect(s.scan(new RegExp(r"\w(\w)(\w*)")), equals("test"));
+      expect(s[0], equals("test"));
+      expect(s[1], equals("e"));
+      expect(s[2], equals("st"));
+      expect(s[3], isNull);
+      expect(s.scan(new RegExp(r"\w+")), isNull);
+      expect(s[0], isNull);
+      expect(s[1], isNull);
+      expect(s[2], isNull);
+      expect(s.scan(new RegExp(r"\s+")), equals(" "));
+      expect(s[0], equals(" "));
+      expect(s[1], isNull);
     });
   });
 }
